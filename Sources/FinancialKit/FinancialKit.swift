@@ -1,2 +1,6 @@
-// The Swift Programming Language
-// https://docs.swift.org/swift-book
+public struct FinancialKit {
+    public static let tvm = TVMCalculator.self
+    // In the future we might have
+    // public static let bonds = BondCalculator.self
+    // public static let stocks = StockCalculator.self
+}
