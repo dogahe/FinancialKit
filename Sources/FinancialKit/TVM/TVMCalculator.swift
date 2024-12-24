@@ -31,8 +31,8 @@ public struct TVMCalculator {
     interestRate: Double? = nil,
     numberOfPeriods: Double? = nil,
     payment: Double? = nil,
-    paymentsPerYear: Double = 1,
-    compoundingPeriodsPerYear: Double = 1,
+    paymentsPerYear: Int = 1,
+    compoundingPeriodsPerYear: Int = 1,
     isEndOfPeriodPayment: Bool = true,
     unknownVariable: TVMVariable
   ) throws -> Double {
@@ -63,19 +63,19 @@ public struct TVMCalculator {
   // MARK: - Private Calculation Helper Functions
   
   private static func iTVM(interestRate: Double,
-                           paymentsPerYear: Double,
-                           compoundingPeriodsPerYear: Double) -> Double {
-    return exp(log(0.01 * interestRate / compoundingPeriodsPerYear + 1) * compoundingPeriodsPerYear / paymentsPerYear) - 1
+                           paymentsPerYear: Int,
+                           compoundingPeriodsPerYear: Int) -> Double {
+    return exp(log(0.01 * interestRate / Double(compoundingPeriodsPerYear) + 1) * Double(compoundingPeriodsPerYear) / Double(paymentsPerYear)) - 1
   }
   
   private static func gI(interestRate: Double,
-                         paymentsPerYear: Double,
-                         compoundingPeriodsPerYear: Double,
+                         paymentsPerYear: Int,
+                         compoundingPeriodsPerYear: Int,
                          isEndOfPeriodPayment: Bool) -> Double {
     return 1 + iTVM(interestRate: interestRate, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear) * (isEndOfPeriodPayment ? 0 : 1)
   }
   
-  private static func calculatePresentValue(futureValue: Double, interestRate: Double, numberOfPeriods: Double, payment: Double, paymentsPerYear: Double, compoundingPeriodsPerYear: Double, isEndOfPeriodPayment: Bool) throws -> Double {
+  private static func calculatePresentValue(futureValue: Double, interestRate: Double, numberOfPeriods: Double, payment: Double, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, isEndOfPeriodPayment: Bool) throws -> Double {
     let rate = iTVM(interestRate: interestRate, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear)
     var present: Double
     if rate == 0 {
@@ -90,7 +90,7 @@ public struct TVMCalculator {
     return present
   }
     
-  private static func calculateInterestRate(presentValue: Double, futureValue: Double, numberOfPeriods: Double, payment: Double? = nil, paymentsPerYear: Double, compoundingPeriodsPerYear: Double, isEndOfPeriodPayment: Bool, tolerance: Double = 0.00001, maxIterations: Int = 1000) throws -> Double {
+  private static func calculateInterestRate(presentValue: Double, futureValue: Double, numberOfPeriods: Double, payment: Double? = nil, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, isEndOfPeriodPayment: Bool, tolerance: Double = 0.00001, maxIterations: Int = 1000) throws -> Double {
 
       let periods = numberOfPeriods
       let paymentPerPeriod = payment
@@ -106,7 +106,7 @@ public struct TVMCalculator {
           if let pmt = paymentPerPeriod {
               // Annuity case
               // Calculate g based on the current rate guess
-              let g = gI(interestRate: rateGuess * 100 * compoundingPeriodsPerYear, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+              let g = gI(interestRate: rateGuess * 100 * Double(compoundingPeriodsPerYear), paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
 
               // Use g in both fValue and fDerivative calculations
               fValue = presentValue * pow(1 + rateGuess, periods) + pmt * (pow(1 + rateGuess, periods) - 1) / rateGuess * g - futureValue
@@ -121,7 +121,7 @@ public struct TVMCalculator {
           let nextRateGuess = rateGuess - fValue / fDerivative
 
           if abs(nextRateGuess - rateGuess) < tolerance {
-              return nextRateGuess * 100 * compoundingPeriodsPerYear
+              return nextRateGuess * 100 * Double(compoundingPeriodsPerYear)
           }
 
           if fValue > 0 {
@@ -136,7 +136,7 @@ public struct TVMCalculator {
       throw TVMError.invalidInput
   }
   
-  private static func calculateNumberOfPeriods(presentValue: Double, futureValue: Double, interestRate: Double, payment: Double, paymentsPerYear: Double, compoundingPeriodsPerYear: Double, isEndOfPeriodPayment: Bool) throws -> Double {
+  private static func calculateNumberOfPeriods(presentValue: Double, futureValue: Double, interestRate: Double, payment: Double, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, isEndOfPeriodPayment: Bool) throws -> Double {
     let rate = iTVM(interestRate: interestRate, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear)
     var numberOfPeriods: Double
     if rate == 0 {
@@ -148,7 +148,7 @@ public struct TVMCalculator {
     return numberOfPeriods
   }
   
-  private static func calculatePayment(presentValue: Double, futureValue: Double, interestRate: Double, numberOfPeriods: Double, paymentsPerYear: Double, compoundingPeriodsPerYear: Double, isEndOfPeriodPayment: Bool) throws -> Double {
+  private static func calculatePayment(presentValue: Double, futureValue: Double, interestRate: Double, numberOfPeriods: Double, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, isEndOfPeriodPayment: Bool) throws -> Double {
     let rate = iTVM(interestRate: interestRate, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear)
     var payment: Double
     if rate == 0 {
@@ -163,7 +163,7 @@ public struct TVMCalculator {
     return payment
   }
   
-  private static func calculateFutureValue(presentValue: Double, interestRate: Double, numberOfPeriods: Double, payment: Double, paymentsPerYear: Double, compoundingPeriodsPerYear: Double, isEndOfPeriodPayment: Bool) throws -> Double {
+  private static func calculateFutureValue(presentValue: Double, interestRate: Double, numberOfPeriods: Double, payment: Double, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, isEndOfPeriodPayment: Bool) throws -> Double {
     let rate = iTVM(interestRate: interestRate, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear)
     var future: Double
     if rate == 0 {
@@ -180,7 +180,7 @@ public struct TVMCalculator {
   
   // MARK: - Input Validation
   
-  private static func validateInputs(presentValue: Double?, futureValue: Double?, interestRate: Double?, numberOfPeriods: Double?, payment: Double?, paymentsPerYear: Double, compoundingPeriodsPerYear: Double, unknownVariable: TVMVariable) throws {
+  private static func validateInputs(presentValue: Double?, futureValue: Double?, interestRate: Double?, numberOfPeriods: Double?, payment: Double?, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, unknownVariable: TVMVariable) throws {
     
     // Ensure all variables except possibly payment are non-nil
     if unknownVariable != .presentValue && presentValue == nil {
