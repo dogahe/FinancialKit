@@ -7,12 +7,13 @@
 
 import Foundation
 
-public enum TVMVariable {
-  case presentValue
-  case futureValue
-  case interestRate
-  case numberOfPeriods
-  case payment
+@objc(TVMVariable)
+public enum TVMVariable: Int {
+  case presentValue = 0
+  case futureValue = 1
+  case interestRate = 2
+  case numberOfPeriods = 3
+  case payment = 4
 }
 
 enum TVMError: Error {
