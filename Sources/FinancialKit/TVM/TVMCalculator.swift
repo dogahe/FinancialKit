@@ -26,16 +26,18 @@ public struct TVMCalculator {
   // MARK: - Calculation Functions
   
   public static func calculate(
-    presentValue: Double? = nil,
-    futureValue: Double? = nil,
-    interestRate: Double? = nil,
-    numberOfPeriods: Double? = nil,
-    payment: Double? = nil,
+    presentValue: Double = 0,
+    futureValue: Double = 0,
+    interestRate: Double = 0,
+    numberOfPeriods: Double = 0,
+    payment: Double = 0,
     paymentsPerYear: Int = 1,
     compoundingPeriodsPerYear: Int = 1,
     isEndOfPeriodPayment: Bool = true,
+    p1: Int = 1,
+    p2: Int = 1,
     unknownVariable: TVMVariable
-  ) throws -> Double {
+  ) throws -> (result: Double, balance: Double, principal: Double, interest: Double) {
     
     try validateInputs(presentValue: presentValue,
                        futureValue: futureValue,
@@ -46,21 +48,83 @@ public struct TVMCalculator {
                        compoundingPeriodsPerYear: compoundingPeriodsPerYear,
                        unknownVariable: unknownVariable)
     
+    var balance: Double = 0
+    var principal: Double = 0
+    var interest: Double = 0
+    var result: Double = 0.0
+    
+    var myPresentValue = presentValue
+    var myInterestRate = interestRate
+    var myNumberOfPeriods = numberOfPeriods
+    var myPayment = payment
+    
+    
     switch unknownVariable {
     case .presentValue:
-      return try calculatePresentValue(futureValue: futureValue!, interestRate: interestRate!, numberOfPeriods: numberOfPeriods!, payment: payment ?? 0, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      result = try calculatePresentValue(futureValue: futureValue, interestRate: interestRate, numberOfPeriods: numberOfPeriods, payment: payment, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      myPresentValue = result
     case .futureValue:
-      return try calculateFutureValue(presentValue: presentValue!, interestRate: interestRate!, numberOfPeriods: numberOfPeriods!, payment: payment ?? 0, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      result = try calculateFutureValue(presentValue: presentValue, interestRate: interestRate, numberOfPeriods: numberOfPeriods, payment: payment, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
     case .interestRate:
-      return try calculateInterestRate(presentValue: presentValue!, futureValue: futureValue!, numberOfPeriods: numberOfPeriods!, payment: payment, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      result = try calculateInterestRate(presentValue: presentValue, futureValue: futureValue, numberOfPeriods: numberOfPeriods, payment: payment, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      myInterestRate = result
     case .numberOfPeriods:
-      return try calculateNumberOfPeriods(presentValue: presentValue!, futureValue: futureValue!, interestRate: interestRate!, payment: payment ?? 0, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      result = try calculateNumberOfPeriods(presentValue: presentValue, futureValue: futureValue, interestRate: interestRate, payment: payment, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      myNumberOfPeriods = result
     case .payment:
-      return try calculatePayment(presentValue: presentValue!, futureValue: futureValue!, interestRate: interestRate!, numberOfPeriods: numberOfPeriods!, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      result = try calculatePayment(presentValue: presentValue, futureValue: futureValue, interestRate: interestRate, numberOfPeriods: numberOfPeriods, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+      myPayment = result
     }
+    
+    
+    (balance, principal, interest) = calculateAmortization(presentValue: myPresentValue, interestRate: myInterestRate, numberOfPeriods: myNumberOfPeriods, payment: myPayment, p1: p1, p2: p2, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+    return (result, balance, principal, interest)
   }
   
   // MARK: - Private Calculation Helper Functions
+  
+  private static func round(_ value: Double, withNDecimals decimals: Int) -> Double {
+    let multiplier = pow(10, Double(decimals))
+    return (value * multiplier).rounded() / multiplier
+  }
+  
+  private static func calculateAmortization(presentValue: Double,
+                                            interestRate: Double,
+                                            numberOfPeriods: Double,
+                                            payment: Double,
+                                            p1: Int,
+                                            p2: Int,
+                                            paymentsPerYear: Int,
+                                            compoundingPeriodsPerYear: Int,
+                                            isEndOfPeriodPayment: Bool) -> (Double, Double, Double) {
+    let decimalPoints = 2
+    
+    var myBalance = round(presentValue, withNDecimals: decimalPoints)
+    var principal = myBalance
+    var myInterest: Double
+    let myPayment: Double = round(payment, withNDecimals: decimalPoints)
+    
+    let rate = iTVM(interestRate: interestRate, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear)
+    
+    var m = 1
+    while m <= p2 {
+      myInterest = -rate * myBalance
+      myInterest = round(myInterest, withNDecimals: 12)
+      myInterest = round(myInterest, withNDecimals: decimalPoints)
+      myBalance = myBalance - myInterest + myPayment
+      if p1 != 1 {
+        if m + 1 == p1 {
+          principal = myBalance
+        }
+      }
+      m += 1
+    }
+    let balance = myBalance
+    principal = myBalance - principal
+    let interest = Double(p2 - p1 + 1) * myPayment - principal
+    
+    return (balance, principal, interest)
+  }
   
   private static func iTVM(interestRate: Double,
                            paymentsPerYear: Int,
@@ -89,51 +153,51 @@ public struct TVMCalculator {
     }
     return present
   }
-    
+  
   private static func calculateInterestRate(presentValue: Double, futureValue: Double, numberOfPeriods: Double, payment: Double? = nil, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, isEndOfPeriodPayment: Bool, tolerance: Double = 0.00001, maxIterations: Int = 1000) throws -> Double {
-
-      let periods = numberOfPeriods
-      let paymentPerPeriod = payment
-
-      var rateLow = 0.0
-      var rateHigh = 1.0
-      var rateGuess = 0.1 // Initial guess
-
-      for _ in 0..<maxIterations {
-          var fValue: Double
-          var fDerivative: Double
-
-          if let pmt = paymentPerPeriod {
-              // Annuity case
-              // Calculate g based on the current rate guess
-              let g = gI(interestRate: rateGuess * 100 * Double(compoundingPeriodsPerYear), paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
-
-              // Use g in both fValue and fDerivative calculations
-              fValue = presentValue * pow(1 + rateGuess, periods) + pmt * (pow(1 + rateGuess, periods) - 1) / rateGuess * g - futureValue
-              fDerivative = presentValue * periods * pow(1 + rateGuess, periods - 1) + pmt * g * (periods * pow(1 + rateGuess, periods - 1) * rateGuess - (pow(1 + rateGuess, periods) - 1)) / pow(rateGuess, 2)
-
-          } else {
-              // Lump sum case
-              fValue = presentValue * pow(1 + rateGuess, periods) - futureValue
-              fDerivative = presentValue * periods * pow(1 + rateGuess, periods - 1)
-          }
-
-          let nextRateGuess = rateGuess - fValue / fDerivative
-
-          if abs(nextRateGuess - rateGuess) < tolerance {
-              return nextRateGuess * 100 * Double(compoundingPeriodsPerYear)
-          }
-
-          if fValue > 0 {
-              rateHigh = rateGuess
-          } else {
-              rateLow = rateGuess
-          }
-
-          rateGuess = (rateLow + rateHigh) / 2.0
+    
+    let periods = numberOfPeriods
+    let paymentPerPeriod = payment
+    
+    var rateLow = 0.0
+    var rateHigh = 1.0
+    var rateGuess = 0.1 // Initial guess
+    
+    for _ in 0..<maxIterations {
+      var fValue: Double
+      var fDerivative: Double
+      
+      if let pmt = paymentPerPeriod {
+        // Annuity case
+        // Calculate g based on the current rate guess
+        let g = gI(interestRate: rateGuess * 100 * Double(compoundingPeriodsPerYear), paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
+        
+        // Use g in both fValue and fDerivative calculations
+        fValue = presentValue * pow(1 + rateGuess, periods) + pmt * (pow(1 + rateGuess, periods) - 1) / rateGuess * g - futureValue
+        fDerivative = presentValue * periods * pow(1 + rateGuess, periods - 1) + pmt * g * (periods * pow(1 + rateGuess, periods - 1) * rateGuess - (pow(1 + rateGuess, periods) - 1)) / pow(rateGuess, 2)
+        
+      } else {
+        // Lump sum case
+        fValue = presentValue * pow(1 + rateGuess, periods) - futureValue
+        fDerivative = presentValue * periods * pow(1 + rateGuess, periods - 1)
       }
-
-      throw TVMError.invalidInput
+      
+      let nextRateGuess = rateGuess - fValue / fDerivative
+      
+      if abs(nextRateGuess - rateGuess) < tolerance {
+        return nextRateGuess * 100 * Double(compoundingPeriodsPerYear)
+      }
+      
+      if fValue > 0 {
+        rateHigh = rateGuess
+      } else {
+        rateLow = rateGuess
+      }
+      
+      rateGuess = (rateLow + rateHigh) / 2.0
+    }
+    
+    throw TVMError.invalidInput
   }
   
   private static func calculateNumberOfPeriods(presentValue: Double, futureValue: Double, interestRate: Double, payment: Double, paymentsPerYear: Int, compoundingPeriodsPerYear: Int, isEndOfPeriodPayment: Bool) throws -> Double {
