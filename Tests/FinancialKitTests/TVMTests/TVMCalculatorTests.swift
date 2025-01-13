@@ -194,6 +194,34 @@ struct TVMCalculatorTests {
   }
   
   @Test
+  func testAmortizationSchedule() throws {
+    let amortizationSchedule = try FinancialKit.tvm.calculate(
+      presentValue: 75000,
+      futureValue: 0,
+      interestRate: 5.5,
+      numberOfPeriods: 360,
+      paymentsPerYear: 12,
+      compoundingPeriodsPerYear: 12,
+      unknownVariable: .payment
+    ).amortizationSchedule
+    print(amortizationSchedule.balances)
+    print(amortizationSchedule.principalPayments)
+    print(amortizationSchedule.interestPayments)
+    
+    #expect(abs(amortizationSchedule.balances[0] - (74917.91)) < 0.01)
+    #expect(abs(amortizationSchedule.principalPayments[0] - (-82.09)) < 0.01)
+    #expect(abs(amortizationSchedule.interestPayments[0] - (-343.75)) < 0.01)
+    
+    #expect(abs(amortizationSchedule.balances[1] - (74835.44)) < 0.01)
+    #expect(abs(amortizationSchedule.principalPayments[1] - (-82.47)) < 0.01)
+    #expect(abs(amortizationSchedule.interestPayments[1] - (-343.37)) < 0.01)
+    
+    #expect(abs(amortizationSchedule.balances[35] - (71794.95)) < 0.01)
+    #expect(abs(amortizationSchedule.principalPayments[35] - (-96.34)) < 0.01)
+    #expect(abs(amortizationSchedule.interestPayments[35] - (-329.50)) < 0.01)
+  }
+  
+  @Test
   func testPrincipalTenthYearForMortgageByCalculatingPresentValue() throws {
     let principal = try FinancialKit.tvm.calculate(
       futureValue: 0,

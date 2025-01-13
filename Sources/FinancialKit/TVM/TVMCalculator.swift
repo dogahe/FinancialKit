@@ -21,6 +21,17 @@ enum TVMError: Error {
   case unknownVariable
 }
 
+public struct AmortizationSchedule {
+    let principalPayments: [Double]
+    let interestPayments: [Double]
+    let balances: [Double]
+
+    init(principalPayments: [Double], interestPayments: [Double], balances: [Double]) {
+        self.principalPayments = principalPayments
+        self.interestPayments = interestPayments
+        self.balances = balances
+    }
+}
 
 public struct TVMCalculator {
   // MARK: - Calculation Functions
@@ -37,7 +48,7 @@ public struct TVMCalculator {
     p1: Int = 1,
     p2: Int = 1,
     unknownVariable: TVMVariable
-  ) throws -> (result: Double, balance: Double, principal: Double, interest: Double) {
+  ) throws -> (result: Double, balance: Double, principal: Double, interest: Double, amortizationSchedule: AmortizationSchedule) {
     
     try validateInputs(presentValue: presentValue,
                        futureValue: futureValue,
@@ -48,6 +59,7 @@ public struct TVMCalculator {
                        compoundingPeriodsPerYear: compoundingPeriodsPerYear,
                        unknownVariable: unknownVariable)
     
+    var amortizationSchedule: AmortizationSchedule
     var balance: Double = 0
     var principal: Double = 0
     var interest: Double = 0
@@ -76,9 +88,10 @@ public struct TVMCalculator {
       myPayment = result
     }
     
+    amortizationSchedule = calculateAmortizationSchedule(presentValue: myPresentValue, interestRate: myInterestRate, numberOfPeriods: myNumberOfPeriods, payment: myPayment, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
     
     (balance, principal, interest) = calculateAmortization(presentValue: myPresentValue, interestRate: myInterestRate, numberOfPeriods: myNumberOfPeriods, payment: myPayment, p1: p1, p2: p2, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear, isEndOfPeriodPayment: isEndOfPeriodPayment)
-    return (result, balance, principal, interest)
+    return (result, balance, principal, interest, amortizationSchedule)
   }
   
   // MARK: - Private Calculation Helper Functions
@@ -86,6 +99,49 @@ public struct TVMCalculator {
   private static func round(_ value: Double, withNDecimals decimals: Int) -> Double {
     let multiplier = pow(10, Double(decimals))
     return (value * multiplier).rounded() / multiplier
+  }
+  
+  public static func calculateAmortizationSchedule(
+    presentValue: Double,
+    interestRate: Double,
+    numberOfPeriods: Double,
+    payment: Double,
+    paymentsPerYear: Int,
+    compoundingPeriodsPerYear: Int,
+    isEndOfPeriodPayment: Bool
+  ) -> AmortizationSchedule {
+    let decimalPoints = 2
+    var myBalance = round(presentValue, withNDecimals: decimalPoints)
+    let initialPrincipal = myBalance
+    var myInterest: Double
+    let myPayment: Double = round(payment, withNDecimals: decimalPoints)
+    
+    let rate = iTVM(interestRate: interestRate, paymentsPerYear: paymentsPerYear, compoundingPeriodsPerYear: compoundingPeriodsPerYear)
+    
+    var balances: [Double] = []
+    var principalPayments: [Double] = []
+    var principalCumulativePayments: [Double] = []
+    var interestPayments: [Double] = []
+    
+    var m = 1
+    var lastPrincipalCumulative: Double = 0
+    while m <= Int(numberOfPeriods) {
+      myInterest = -rate * myBalance
+      myInterest = round(myInterest, withNDecimals: 12)
+      myInterest = round(myInterest, withNDecimals: decimalPoints)
+      myBalance = myBalance - myInterest + myPayment
+      m += 1
+      balances.append(myBalance)
+      let cumulativePrincipal = myBalance - initialPrincipal
+      principalCumulativePayments.append(cumulativePrincipal)
+      let principal = cumulativePrincipal - lastPrincipalCumulative
+      principalPayments.append(principal)
+      let interest = myPayment - principal
+      interestPayments.append(interest)
+      lastPrincipalCumulative = cumulativePrincipal
+    }
+    let amortizationSchedule = AmortizationSchedule(principalPayments: principalPayments, interestPayments: interestPayments, balances: balances)
+    return amortizationSchedule
   }
   
   private static func calculateAmortization(presentValue: Double,
@@ -98,7 +154,6 @@ public struct TVMCalculator {
                                             compoundingPeriodsPerYear: Int,
                                             isEndOfPeriodPayment: Bool) -> (Double, Double, Double) {
     let decimalPoints = 2
-    
     var myBalance = round(presentValue, withNDecimals: decimalPoints)
     var principal = myBalance
     var myInterest: Double
