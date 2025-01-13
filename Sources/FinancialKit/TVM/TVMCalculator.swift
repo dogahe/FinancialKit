@@ -23,16 +23,17 @@ enum TVMError: Error {
 
 public struct TVMCalculator {
 
+  
   public struct AmortizationSchedule {
-      let principalPayments: [Double]
-      let interestPayments: [Double]
-      let balances: [Double]
-
-      init(principalPayments: [Double], interestPayments: [Double], balances: [Double]) {
-          self.principalPayments = principalPayments
-          self.interestPayments = interestPayments
-          self.balances = balances
-      }
+    let principalPayments: [Double]
+    let interestPayments: [Double]
+    let balances: [Double]
+    
+    public init(principalPayments: [Double], interestPayments: [Double], balances: [Double]) {
+      self.principalPayments = principalPayments
+      self.interestPayments = interestPayments
+      self.balances = balances
+    }
   }
   
   // MARK: - Calculation Functions
