@@ -21,19 +21,20 @@ enum TVMError: Error {
   case unknownVariable
 }
 
-public struct AmortizationSchedule {
-    let principalPayments: [Double]
-    let interestPayments: [Double]
-    let balances: [Double]
-
-    init(principalPayments: [Double], interestPayments: [Double], balances: [Double]) {
-        self.principalPayments = principalPayments
-        self.interestPayments = interestPayments
-        self.balances = balances
-    }
-}
-
 public struct TVMCalculator {
+
+  public struct AmortizationSchedule {
+      let principalPayments: [Double]
+      let interestPayments: [Double]
+      let balances: [Double]
+
+      init(principalPayments: [Double], interestPayments: [Double], balances: [Double]) {
+          self.principalPayments = principalPayments
+          self.interestPayments = interestPayments
+          self.balances = balances
+      }
+  }
+  
   // MARK: - Calculation Functions
   
   public static func calculate(
