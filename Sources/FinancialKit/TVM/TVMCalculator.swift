@@ -25,9 +25,9 @@ public struct TVMCalculator {
 
   
   public struct AmortizationSchedule {
-    let principalPayments: [Double]
-    let interestPayments: [Double]
-    let balances: [Double]
+    public let principalPayments: [Double]
+    public let interestPayments: [Double]
+    public let balances: [Double]
     
     public init(principalPayments: [Double], interestPayments: [Double], balances: [Double]) {
       self.principalPayments = principalPayments
